@@ -1,25 +1,15 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'package:path/path.dart' as path;  // Alias to avoid conflicts
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'package:path_provider/path_provider.dart'; // For temporary storage
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Ensures the binding is initialized
-  await Firebase.initializeApp(); // Initialize Firebase
-  runApp(TakePhotoApp());
-}
+void main() => runApp(MyApp());
 
-class TakePhotoApp extends StatelessWidget {
+class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Take a Photo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: HomePage(), // Set HomePage as the home widget
+      home: TakePhotoScreen(),
     );
   }
 }
@@ -29,17 +19,16 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Photo App'),
+        title: Text('Take a Photo'),
       ),
       body: Center(
         child: ElevatedButton(
           onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => TakePhotoScreen()), // Navigate to the TakePhotoScreen
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => TakePhotoScreen()),
             );
           },
-          child: Text('Take a Photo'),
+          child: Text('Open Camera'),
         ),
       ),
     );
@@ -47,66 +36,34 @@ class HomePage extends StatelessWidget {
 }
 
 class TakePhotoScreen extends StatefulWidget {
-  const TakePhotoScreen({Key? key}) : super(key: key); // Added named key parameter
-
   @override
   _TakePhotoScreenState createState() => _TakePhotoScreenState();
 }
 
 class _TakePhotoScreenState extends State<TakePhotoScreen> {
-  File? _image; // To store the selected image
+  File? _imageFile;
   final ImagePicker _picker = ImagePicker();
-  bool _isUploading = false; // To track if the file is uploading
 
-  // Function to take a photo
   Future<void> _takePhoto() async {
     final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera);
 
     if (pickedFile != null) {
+      // Get the temporary directory for the device
+      final Directory tempDir = await getTemporaryDirectory();
+      // Create a new file in the temporary directory
+      final File tempFile = File('${tempDir.path}/${pickedFile.name}');
+
+      // Save the photo to the temporary directory
+      final File savedImage = await File(pickedFile.path).copy(tempFile.path);
+
       setState(() {
-        _image = File(pickedFile.path);
+        _imageFile = savedImage;
       });
 
-      // Automatically upload the photo after it's taken
-      if (_image != null) {
-        await _uploadPhoto(_image!); // Upload the photo to Firebase
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Photo saved temporarily: ${savedImage.path}')),
+      );
     }
-  }
-
-  // Independent function to upload photo to Firebase
-  Future<void> _uploadPhoto(File image) async {
-    setState(() {
-      _isUploading = true;
-    });
-
-    try {
-      String fileName = path.basename(image.path); // Extract filename using the aliased path
-      Reference storageRef = FirebaseStorage.instance.ref().child("uploads/$fileName");
-
-      // Upload the file
-      await storageRef.putFile(image);
-
-      // Get the download URL
-      String downloadUrl = await storageRef.getDownloadURL();
-
-      // Show a Snackbar using the context from the state
-      _showSnackBar('Photo uploaded successfully: $downloadUrl');
-    } catch (e) {
-      // Show a Snackbar using the context from the state
-      _showSnackBar('Failed to upload image: $e');
-    } finally {
-      setState(() {
-        _isUploading = false;
-      });
-    }
-  }
-
-  // Helper method to show Snackbar
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-    ));
   }
 
   @override
@@ -119,15 +76,19 @@ class _TakePhotoScreenState extends State<TakePhotoScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _image == null
-                ? Text('No image selected.')
-                : Image.file(_image!), // Display the selected image
+            if (_imageFile != null)
+              Image.file(
+                _imageFile!,
+                width: 300,
+                height: 300,
+              )
+            else
+              Text('No photo taken yet.'),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _takePhoto, // Trigger the function to take a photo
-              child: Text('Take a Photo'),
+              onPressed: _takePhoto,
+              child: Text('Take Photo'),
             ),
-            if (_isUploading) CircularProgressIndicator(), // Show a loading spinner when uploading
           ],
         ),
       ),
