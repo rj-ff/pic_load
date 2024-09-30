@@ -10,6 +10,33 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    signingConfigs {
+        release {
+            storeFile file('/home/mx_/.android/debug.keystore') // Use the actual release keystore here
+            storePassword 'android' // Keystore password for release
+            keyAlias 'androiddebugkey' // Key alias for release
+            keyPassword 'android' // Key password for release
+        }
+        debug {
+            storeFile file('/home/mx_/.android/debug.keystore') // Path to your debug keystore
+            storePassword 'android' // Keystore password for debug
+            keyAlias 'androiddebugkey' // Key alias for debug
+            keyPassword 'android' // Key password for debug
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release // Use release signing config
+            minifyEnabled false // Set to true if you want to enable code shrinking
+            shrinkResources false // Add this line to prevent shrinking without minifyEnabled
+        }
+        debug {
+            signingConfig signingConfigs.debug // Use debug signing config
+            minifyEnabled false // Code shrinking should not be needed in debug mode
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
@@ -30,13 +57,13 @@ android {
         versionName = flutter.versionName
     }
 
-    buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
-        }
-    }
+    // buildTypes {
+    //     release {
+    //         // TODO: Add your own signing config for the release build.
+    //         // Signing with the debug keys for now, so `flutter run --release` works.
+    //         signingConfig = signingConfigs.debug
+    //     }
+    // }
 }
 
 flutter {

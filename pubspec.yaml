@@ -41,6 +41,7 @@ dependencies:
   http: ^1.2.2  # To handle API requests
   googleapis: ^13.2.0  # Google APIs like Drive API
   googleapis_auth: ^1.6.0  # OAuth 2.0 Authentication
+  file_picker: ^5.2.1
 
 
 

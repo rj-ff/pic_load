@@ -2,93 +2,73 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart'; // For temporary storage
-
-
-void main() => runApp(MyApp());
+import 'google_drive_service.dart';
+void main() {
+  runApp(MyApp());
+}
 
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: TakePhotoScreen(),
+      title: 'Google Drive Upload App',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: HomePage(),
     );
   }
 }
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Take a Photo'),
-      ),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => TakePhotoScreen()),
-            );
-          },
-          child: Text('Open Camera'),
-        ),
-      ),
-    );
-  }
+  HomePageState createState() => HomePageState();
 }
 
-class TakePhotoScreen extends StatefulWidget {
-  @override
-  _TakePhotoScreenState createState() => _TakePhotoScreenState();
-}
-
-class _TakePhotoScreenState extends State<TakePhotoScreen> {
-  File? _imageFile;
-  final ImagePicker _picker = ImagePicker();
-
-  Future<void> _takePhoto() async {
-    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera);
-
-    if (pickedFile != null) {
-      // Get the temporary directory for the device
-      final Directory tempDir = await getTemporaryDirectory();
-      // Create a new file in the temporary directory
-      final File tempFile = File('${tempDir.path}/${pickedFile.name}');
-
-      // Save the photo to the temporary directory
-      final File savedImage = await File(pickedFile.path).copy(tempFile.path);
-
-      setState(() {
-        _imageFile = savedImage;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Photo saved temporarily: ${savedImage.path}')),
-      );
-    }
-  }
+class HomePageState extends State<HomePage> {
+  final GoogleDriveService _googleDriveService = GoogleDriveService(); // Make sure you have this service class
+  bool _isUploading = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Take a Photo'),
+        title: const Text("Google Drive File Upload"),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (_imageFile != null)
-              Image.file(
-                _imageFile!,
-                width: 300,
-                height: 300,
-              )
-            else
-              Text('No photo taken yet.'),
-            SizedBox(height: 20),
+          children: <Widget>[
             ElevatedButton(
-              onPressed: _takePhoto,
-              child: Text('Take Photo'),
+              onPressed: () async {
+                await _googleDriveService.signIn();
+                setState(() {});
+              },
+              child: const Text("Sign in with Google"),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _googleDriveService.isUserSignedIn() && !_isUploading
+                  ? () async {
+                      setState(() {
+                        _isUploading = true;
+                      });
+                      await _googleDriveService.uploadFile();
+                      setState(() {
+                        _isUploading = false;
+                      });
+                    }
+                  : null, // Disables the button if not signed in or during upload
+              child: _isUploading
+                  ? CircularProgressIndicator() // Shows loading indicator during upload
+                  : const Text("Upload File"), // Normal button when not uploading
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                // This is a placeholder for taking a picture (not implemented yet)
+              },
+              child: const Text("Take Picture"),
             ),
           ],
         ),
