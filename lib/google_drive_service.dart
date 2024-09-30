@@ -24,38 +24,62 @@ class GoogleDriveService {
     return _currentUser != null;
   }
 
-  Future<void> uploadFile() async {
-    if (_currentUser == null) return;
+  // Ensure this method accepts a file path as an argument
+  Future<void> uploadFile(String filePath) async {
+    if (_currentUser == null) {
+      throw Exception("User not signed in");
+    }
 
-    // Get authentication headers
+    // Create a reference to the file on the local filesystem
+    File fileToUpload = File(filePath);
+
+    // Metadata for the file
+    var driveFile = drive.File();
+    driveFile.name = fileToUpload.path.split('/').last;
+
+    // Authenticated HTTP client
     final authHeaders = await _currentUser!.authHeaders;
-
-    // Create an authenticated HTTP client using auth headers
     final authenticateClient = GoogleAuthClient(authHeaders);
 
-    // Instantiate the Google Drive API with the authenticated client
     var driveApi = drive.DriveApi(authenticateClient);
 
-    // Create metadata for the file
-    var fileToUpload = drive.File();
-    fileToUpload.name = "example.txt";
-
-    // Provide the shared folder's ID where the files will be uploaded
-    fileToUpload.parents = [folderID];
-
-    // Dummy file data, replace this with actual file data
-    var media = drive.Media(
-      Stream.fromIterable([List<int>.generate(100, (index) => index)]), 
-      100,
-    );
-
-    // Upload the file
-    var response = await driveApi.files.create(fileToUpload, uploadMedia: media);
-    print('Uploaded file ID: ${response.id}');
-
-    // Close the authenticated client (optional, depending on your needs)
-    authenticateClient.close();
+    // Upload file to Google Drive
+    var media = drive.Media(fileToUpload.openRead(), fileToUpload.lengthSync());
+    await driveApi.files.create(driveFile, uploadMedia: media);
   }
+
+  // Future<void> uploadFile() async {
+  //   if (_currentUser == null) return;
+
+  //   // Get authentication headers
+  //   final authHeaders = await _currentUser!.authHeaders;
+
+  //   // Create an authenticated HTTP client using auth headers
+  //   final authenticateClient = GoogleAuthClient(authHeaders);
+
+  //   // Instantiate the Google Drive API with the authenticated client
+  //   var driveApi = drive.DriveApi(authenticateClient);
+
+  //   // Create metadata for the file
+  //   var fileToUpload = drive.File();
+  //   fileToUpload.name = "example.txt";
+
+  //   // Provide the shared folder's ID where the files will be uploaded
+  //   fileToUpload.parents = [folderID];
+
+  //   // Dummy file data, replace this with actual file data
+  //   var media = drive.Media(
+  //     Stream.fromIterable([List<int>.generate(100, (index) => index)]), 
+  //     100,
+  //   );
+
+  //   // Upload the file
+  //   var response = await driveApi.files.create(fileToUpload, uploadMedia: media);
+  //   print('Uploaded file ID: ${response.id}');
+
+  //   // Close the authenticated client (optional, depending on your needs)
+  //   authenticateClient.close();
+  // }
 
   Future<void> signOut() async {
     await _googleSignIn.signOut();

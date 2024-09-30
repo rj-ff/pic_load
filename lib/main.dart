@@ -1,33 +1,17 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart'; // For temporary storage
-import 'google_drive_service.dart';
-void main() {
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Google Drive Upload App',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: HomePage(),
-    );
-  }
-}
+//import 'dart:io';
+import 'google_drive_service.dart'; // The working GoogleDriveService
 
 class HomePage extends StatefulWidget {
   @override
-  HomePageState createState() => HomePageState();
+  _HomePageState createState() => _HomePageState();
 }
 
-class HomePageState extends State<HomePage> {
-  final GoogleDriveService _googleDriveService = GoogleDriveService(); // Make sure you have this service class
+class _HomePageState extends State<HomePage> {
+  final GoogleDriveService _googleDriveService = GoogleDriveService();
   bool _isUploading = false;
+  String? _imagePath; // Path to the picture taken by the camera
 
   @override
   Widget build(BuildContext context) {
@@ -50,29 +34,55 @@ class HomePageState extends State<HomePage> {
             ElevatedButton(
               onPressed: _googleDriveService.isUserSignedIn() && !_isUploading
                   ? () async {
+                      if (_imagePath == null) {
+                        // Display message if no picture is taken
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Please take a picture first!')),
+                        );
+                        return;
+                      }
                       setState(() {
                         _isUploading = true;
                       });
-                      await _googleDriveService.uploadFile();
+                      await _googleDriveService.uploadFile(_imagePath!); // Use image path
                       setState(() {
                         _isUploading = false;
                       });
                     }
-                  : null, // Disables the button if not signed in or during upload
-              child: _isUploading
-                  ? CircularProgressIndicator() // Shows loading indicator during upload
-                  : const Text("Upload File"), // Normal button when not uploading
+                  : null,
+              child: _isUploading ? CircularProgressIndicator() : Text("Upload File"),
             ),
             const SizedBox(height: 20),
+            // New button to take a picture
             ElevatedButton(
-              onPressed: () {
-                // This is a placeholder for taking a picture (not implemented yet)
+              onPressed: () async {
+                await _takePicture();
+                setState(() {});
               },
               child: const Text("Take Picture"),
             ),
+            if (_imagePath != null)
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text("Picture taken: $_imagePath"),
+              ),
           ],
         ),
       ),
     );
+  }
+
+  // Function to take a picture using the camera and store the path in a global variable
+  Future<void> _takePicture() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+
+    if (pickedFile != null) {
+      _imagePath = pickedFile.path;
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No picture was taken')),
+      );
+    }
   }
 }
