@@ -1,151 +1,191 @@
+import 'dart:async';
+import 'dart:io';
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'google_drive_service.dart'; // The working GoogleDriveService
 
-void main() {
-  runApp(MyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Obtain a list of the available cameras on the device.
+  final cameras = await availableCameras();
+
+  // Get a specific camera from the list of available cameras.
+  final firstCamera = cameras.first;
+
+  runApp(MyApp(camera: firstCamera));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final CameraDescription camera;
+
+  const MyApp({super.key, required this.camera});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: HomePage(),
+      title: 'Camera App',
+      theme: ThemeData.dark(),
+      home: HomeScreen(camera: camera),
     );
   }
 }
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class HomeScreen extends StatefulWidget {
+  final CameraDescription camera;
+
+  const HomeScreen({super.key, required this.camera});
 
   @override
-  _HomePageState createState() => _HomePageState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomePageState extends State<HomePage> {
-  final GoogleDriveService _googleDriveService = GoogleDriveService();
-  bool _isUploading = false;
-  String? _imagePath; // Path to the picture taken by the camera
+class _HomeScreenState extends State<HomeScreen> {
+  String? imagePath;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Google Drive File Upload"),
-      ),
+      appBar: AppBar(title: const Text('Home Screen')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
+          children: [
             ElevatedButton(
               onPressed: () async {
-                await _googleDriveService.signIn();
-                setState(() {});
+                // Navigate to the camera screen to take a picture
+                final result = await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => TakePictureScreen(camera: widget.camera),
+                  ),
+                );
+
+                // If a picture was taken and returned, update the imagePath
+                if (result != null) {
+                  setState(() {
+                    imagePath = result as String;
+                  });
+                }
               },
-              child: const Text("Sign in with Google"),
+              child: const Text('Take Picture'),
             ),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _googleDriveService.isUserSignedIn() && !_isUploading
-                  ? () async {
-                      if (_imagePath == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Please take a picture first!')),
-                        );
-                        return;
-                      }
-                      setState(() {
-                        _isUploading = true;
-                      });
-                      await _googleDriveService.uploadFile(_imagePath!);
-                      setState(() {
-                        _isUploading = false;
-                      });
-                    }
-                  : null,
-              child: _isUploading ? CircularProgressIndicator() : Text("Upload File"),
-            ),
-            const SizedBox(height: 20),
-            // New button to take a picture
-            ElevatedButton(
-              onPressed: () async {
-                  _takePicture(); //_takePicture();
-                setState(() {});
-              },
-              child: const Text("Take Picture"),
-            ),
-            if (_imagePath != null)
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text("Picture taken: $_imagePath"),
+            if (imagePath != null)
+              Image.file(
+                File(imagePath!),
+                width: 300,
+                height: 300,
+                fit: BoxFit.cover,
               ),
           ],
         ),
       ),
     );
   }
+}
 
-  // Function to take a picture using the camera and store the path in a global variable
-  Future<void> _takePicture() async {
-  final picker = ImagePicker();
+// The camera screen where users can take a picture
+class TakePictureScreen extends StatefulWidget {
+  final CameraDescription camera;
 
-  try {
-    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+  const TakePictureScreen({super.key, required this.camera});
 
-    if (pickedFile != null) {
-      setState(() {
-        _imagePath = pickedFile.path;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Picture taken: $_imagePath')),
-      );
-    } else {
-      // This will get called if no image is returned (e.g., user cancels)
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No picture was taken')),
-      );
-    }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: $e')),
+  @override
+  TakePictureScreenState createState() => TakePictureScreenState();
+}
+
+class TakePictureScreenState extends State<TakePictureScreen> {
+  late CameraController _controller;
+  late Future<void> _initializeControllerFuture;
+  XFile? _capturedImage;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = CameraController(widget.camera, ResolutionPreset.medium);
+    _initializeControllerFuture = _controller.initialize();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: FutureBuilder<void>(
+        future: _initializeControllerFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            return Stack(
+              alignment: Alignment.bottomCenter,
+              children: [
+                CameraPreview(_controller),
+                if (_capturedImage == null)
+                  FloatingActionButton(
+                    onPressed: () async {
+                      try {
+                        await _initializeControllerFuture;
+                        final image = await _controller.takePicture();
+                        setState(() {
+                          _capturedImage = image;
+                        });
+                      } catch (e) {
+                        print(e);
+                      }
+                    },
+                    child: const Icon(Icons.camera_alt),
+                  )
+                else
+                  _buildImageReviewOverlay(context),
+              ],
+            );
+          } else {
+            return const Center(child: CircularProgressIndicator());
+          }
+        },
+      ),
     );
   }
-}
- Future<void> capturePictureFromCamera(BuildContext context) async {
-  final ImagePicker _picker = ImagePicker();
 
-  try {
-    // Pick image from the camera
-    final XFile? pickedFile = await _picker.pickImage(
-      source: ImageSource.camera,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 80,
-    );
-
-    // Ensure we wait for the result properly
-    if (pickedFile != null && context.mounted) {
-      // Handle successful image capture
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Picture taken: ${pickedFile.path}')),
-      );
-    } else {
-      // Show a message that the capture was canceled
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No picture was taken')),
-      );
-    }
-  } catch (e) {
-    // Handle any errors during the process
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: $e')),
+  // The overlay with two icons: Keep and Cancel after taking a picture
+  Widget _buildImageReviewOverlay(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Image.file(
+            File(_capturedImage!.path),
+            fit: BoxFit.cover,
+          ),
+        ),
+        Align(
+          alignment: Alignment.bottomLeft,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: IconButton(
+              icon: const Icon(Icons.cancel, color: Colors.red, size: 50),
+              onPressed: () {
+                setState(() {
+                  _capturedImage = null; // Cancel and retake
+                });
+              },
+            ),
+          ),
+        ),
+        Align(
+          alignment: Alignment.bottomRight,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: IconButton(
+              icon: const Icon(Icons.check_circle, color: Colors.green, size: 50),
+              onPressed: () {
+                Navigator.of(context).pop(_capturedImage!.path); // Keep and return image path
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
-}
 }
