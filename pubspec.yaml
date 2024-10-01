@@ -31,17 +31,18 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  image_picker: ^1.1.2
+  permission_handler: ^11.3.1
+  image_picker: ^1.0.1
   firebase_core: ^3.3.0
   firebase_storage: ^12.3.2
   path: ^1.9.0
   path_provider: ^2.0.11
   geolocator: ^13.0.1
-  google_sign_in: ^5.4.1  # To handle Google authentication in Flutter
+  google_sign_in: ^6.2.1  # To handle Google authentication in Flutter
   http: ^1.2.2  # To handle API requests
   googleapis: ^13.2.0  # Google APIs like Drive API
   googleapis_auth: ^1.6.0  # OAuth 2.0 Authentication
-  file_picker: ^5.2.1
+  file_picker: ^8.1.2
 
 
 
@@ -58,7 +59,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^4.0.0
+  flutter_lints: ^5.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
