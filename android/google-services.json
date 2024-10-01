@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "858294667960",
+    "project_id": "slab-e0d7d",
+    "storage_bucket": "slab-e0d7d.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:858294667960:android:1c1b0848fa1d9623ec424d",
+        "android_client_info": {
+          "package_name": "com.example.pic_load"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDcdiC9yiBxgcu7by_qfxU328JxI6bjFS8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,7 +1,6 @@
 plugins {
     id "com.android.application"
     id "kotlin-android"
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id "dev.flutter.flutter-gradle-plugin"
 }
 
@@ -13,27 +12,27 @@ android {
     signingConfigs {
         release {
             storeFile file('/home/mx_/.android/debug.keystore') // Use the actual release keystore here
-            storePassword 'android' // Keystore password for release
-            keyAlias 'androiddebugkey' // Key alias for release
-            keyPassword 'android' // Key password for release
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
         }
         debug {
             storeFile file('/home/mx_/.android/debug.keystore') // Path to your debug keystore
-            storePassword 'android' // Keystore password for debug
-            keyAlias 'androiddebugkey' // Key alias for debug
-            keyPassword 'android' // Key password for debug
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release // Use release signing config
-            minifyEnabled false // Set to true if you want to enable code shrinking
-            shrinkResources false // Add this line to prevent shrinking without minifyEnabled
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
         }
         debug {
-            signingConfig signingConfigs.debug // Use debug signing config
-            minifyEnabled false // Code shrinking should not be needed in debug mode
+            signingConfig signingConfigs.debug
+            minifyEnabled false
         }
     }
 
@@ -47,25 +46,21 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.pic_load"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
-
-    // buildTypes {
-    //     release {
-    //         // TODO: Add your own signing config for the release build.
-    //         // Signing with the debug keys for now, so `flutter run --release` works.
-    //         signingConfig = signingConfigs.debug
-    //     }
-    // }
 }
 
+dependencies {
+    implementation platform('com.google.firebase:firebase-bom:32.3.0') // Firebase BOM
+    implementation 'com.google.firebase:firebase-analytics:21.3.0'
+    implementation 'com.google.firebase:firebase-firestore:24.7.1' // Firestore SDK
+}
+
+apply plugin: 'com.google.gms.google-services' // Move this to the end
 flutter {
     source = "../.."
 }

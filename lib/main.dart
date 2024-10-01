@@ -2,12 +2,18 @@ import 'dart:async';
 import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as path;
+import 'package:firebase_core/firebase_core.dart';
+import 'package:pic_load/firebase_service.dart';
+import 'geolocation_service.dart';  // Replace with your project name
+import 'package:geolocator/geolocator.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore for GeoPoint and Timestamp
 
 Future<void> main() async {
   // Ensure that plugin services are initialized so that `availableCameras()`
   // can be called before `runApp()`
   WidgetsFlutterBinding.ensureInitialized();
+  
+  await Firebase.initializeApp();
 
   // Obtain a list of the available cameras on the device.
   final cameras = await availableCameras();
@@ -42,6 +48,13 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String? _imagePath;
+  FirebaseService _firebaseService = FirebaseService();
+
+  // Dummy data to be uploaded to Firestore
+  int id = 1;
+  String name = "Default Name";
+  GeoPoint location = GeoPoint(37.7749, -122.4194); // Example location (San Francisco)
+  Timestamp time = Timestamp.now();
 
   void _setImagePath(String path) {
     setState(() {
@@ -61,6 +74,18 @@ class _HomeScreenState extends State<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('No image to upload.')),
       );
+    }
+  }
+   Future<void> _fetchLocation() async {
+    Position? position = await _geolocationService.getGeolocation();
+    if (position != null) {
+      setState(() {
+        location = 'Latitude: ${position.latitude}, Longitude: ${position.longitude}';
+      });
+    } else {
+      setState(() {
+        location = 'Failed to get location.';
+      });
     }
   }
 
@@ -102,7 +127,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _uploadImage,
+              onPressed: () async {
+                await _firebaseService.addData(id, name, location, time);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Data Uploaded')));
+          
+              },
               child: const Text('Upload to Cloud'),
             ),
           ],
