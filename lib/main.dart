@@ -2,23 +2,24 @@ import 'dart:async';
 import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as path;
 
 Future<void> main() async {
+  // Ensure that plugin services are initialized so that `availableCameras()`
+  // can be called before `runApp()`
   WidgetsFlutterBinding.ensureInitialized();
 
   // Obtain a list of the available cameras on the device.
   final cameras = await availableCameras();
-
-  // Get a specific camera from the list of available cameras.
   final firstCamera = cameras.first;
 
   runApp(MyApp(camera: firstCamera));
 }
 
 class MyApp extends StatelessWidget {
-  final CameraDescription camera;
-
   const MyApp({super.key, required this.camera});
+
+  final CameraDescription camera;
 
   @override
   Widget build(BuildContext context) {
@@ -31,51 +32,79 @@ class MyApp extends StatelessWidget {
 }
 
 class HomeScreen extends StatefulWidget {
-  final CameraDescription camera;
-
   const HomeScreen({super.key, required this.camera});
 
+  final CameraDescription camera;
+
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  _HomeScreenState createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String? imagePath;
+  String? _imagePath;
+
+  void _setImagePath(String path) {
+    setState(() {
+      _imagePath = path;
+    });
+  }
+
+  Future<void> _uploadImage() async {
+    // Replace this with your cloud upload logic
+    if (_imagePath != null) {
+      // Simulate uploading the image
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Uploading $_imagePath...')),
+      );
+      // Add your upload logic here
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No image to upload.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Home Screen')),
+      appBar: AppBar(title: const Text('Home')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+          children: <Widget>[
+            if (_imagePath != null) 
+              Column(
+                children: [
+                  // Display the image path
+                  Text('Image Path: $_imagePath'),
+                  const SizedBox(height: 20),
+                  // Display the image with a 40% size
+                  Image.file(
+                    File(_imagePath!),
+                    width: MediaQuery.of(context).size.width * 0.4,
+                    height: MediaQuery.of(context).size.width * 0.4,
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
             ElevatedButton(
               onPressed: () async {
-                // Navigate to the camera screen to take a picture
-                final result = await Navigator.of(context).push(
+                final imagePath = await Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => TakePictureScreen(camera: widget.camera),
+                    builder: (context) => TakePictureScreen(camera: widget.camera, setImagePath: _setImagePath),
                   ),
                 );
-
-                // If a picture was taken and returned, update the imagePath
-                if (result != null) {
-                  setState(() {
-                    imagePath = result as String;
-                  });
+                if (imagePath != null) {
+                  _setImagePath(imagePath);
                 }
               },
               child: const Text('Take Picture'),
             ),
             const SizedBox(height: 20),
-            if (imagePath != null)
-              Image.file(
-                File(imagePath!),
-                width: 300,
-                height: 300,
-                fit: BoxFit.cover,
-              ),
+            ElevatedButton(
+              onPressed: _uploadImage,
+              child: const Text('Upload to Cloud'),
+            ),
           ],
         ),
       ),
@@ -83,11 +112,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// The camera screen where users can take a picture
 class TakePictureScreen extends StatefulWidget {
-  final CameraDescription camera;
+  const TakePictureScreen({
+    super.key,
+    required this.camera,
+    required this.setImagePath,
+  });
 
-  const TakePictureScreen({super.key, required this.camera});
+  final CameraDescription camera;
+  final Function(String) setImagePath;
 
   @override
   TakePictureScreenState createState() => TakePictureScreenState();
@@ -96,12 +129,15 @@ class TakePictureScreen extends StatefulWidget {
 class TakePictureScreenState extends State<TakePictureScreen> {
   late CameraController _controller;
   late Future<void> _initializeControllerFuture;
-  XFile? _capturedImage;
 
   @override
   void initState() {
     super.initState();
-    _controller = CameraController(widget.camera, ResolutionPreset.medium);
+    _controller = CameraController(
+      widget.camera,
+      ResolutionPreset.medium,
+    );
+
     _initializeControllerFuture = _controller.initialize();
   }
 
@@ -114,78 +150,60 @@ class TakePictureScreenState extends State<TakePictureScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: const Text('Take a picture')),
       body: FutureBuilder<void>(
         future: _initializeControllerFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
-            return Stack(
-              alignment: Alignment.bottomCenter,
-              children: [
-                CameraPreview(_controller),
-                if (_capturedImage == null)
-                  FloatingActionButton(
-                    onPressed: () async {
-                      try {
-                        await _initializeControllerFuture;
-                        final image = await _controller.takePicture();
-                        setState(() {
-                          _capturedImage = image;
-                        });
-                      } catch (e) {
-                        print(e);
-                      }
-                    },
-                    child: const Icon(Icons.camera_alt),
-                  )
-                else
-                  _buildImageReviewOverlay(context),
-              ],
-            );
+            return CameraPreview(_controller);
           } else {
             return const Center(child: CircularProgressIndicator());
           }
         },
       ),
-    );
-  }
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          try {
+            await _initializeControllerFuture;
+            final image = await _controller.takePicture();
 
-  // The overlay with two icons: Keep and Cancel after taking a picture
-  Widget _buildImageReviewOverlay(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: Image.file(
-            File(_capturedImage!.path),
-            fit: BoxFit.cover,
-          ),
-        ),
-        Align(
-          alignment: Alignment.bottomLeft,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: IconButton(
-              icon: const Icon(Icons.cancel, color: Colors.red, size: 50),
-              onPressed: () {
-                setState(() {
-                  _capturedImage = null; // Cancel and retake
-                });
+            if (!context.mounted) return;
+
+            // Show dialog to keep or cancel the picture
+            final keepImage = await showDialog<bool>(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text('Keep Picture?'),
+                  content: Image.file(File(image.path)),
+                  actions: <Widget>[
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        widget.setImagePath(image.path);
+                        Navigator.of(context).pop(true);
+                      },
+                      child: const Text('Keep'),
+                    ),
+                  ],
+                );
               },
-            ),
-          ),
-        ),
-        Align(
-          alignment: Alignment.bottomRight,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: IconButton(
-              icon: const Icon(Icons.check_circle, color: Colors.green, size: 50),
-              onPressed: () {
-                Navigator.of(context).pop(_capturedImage!.path); // Keep and return image path
-              },
-            ),
-          ),
-        ),
-      ],
+            );
+
+            if (keepImage == true) {
+              Navigator.of(context).pop(image.path);
+            } else {
+              Navigator.of(context).pop();
+            }
+          } catch (e) {
+            print(e);
+          }
+        },
+        child: const Icon(Icons.camera_alt),
+      ),
     );
   }
 }
