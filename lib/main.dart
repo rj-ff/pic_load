@@ -76,18 +76,18 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
   }
-   Future<void> _fetchLocation() async {
-    Position? position = await _geolocationService.getGeolocation();
-    if (position != null) {
-      setState(() {
-        location = 'Latitude: ${position.latitude}, Longitude: ${position.longitude}';
-      });
-    } else {
-      setState(() {
-        location = 'Failed to get location.';
-      });
-    }
-  }
+  //  Future<void> _fetchLocation() async {
+  //   Position? position = await _geolocationService.getGeolocation();
+  //   if (position != null) {
+  //     setState(() {
+  //       location = 'Latitude: ${position.latitude}, Longitude: ${position.longitude}';
+  //     });
+  //   } else {
+  //     setState(() {
+  //       location = 'Failed to get location.';
+  //     });
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
