@@ -8,6 +8,7 @@ import 'package:pic_load/firebase_service.dart';
 //import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore for GeoPoint and Timestamp
 import 'firebase_image_upload.dart';
+import 'package:pic_load/DataDisplayScreen.dart';
 
 Future<void> main() async {
   // Ensure that plugin services are initialized so that `availableCameras()`
@@ -117,6 +118,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 20),
                 ],
               ),
+              ElevatedButton(
+              onPressed: () {
+                // Navigate to the Admin (Data Display) screen
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => DataDisplayScreen()),
+                );
+              },
+              child: Text('Admin'),
+            ),
             ElevatedButton(
               onPressed: () async {
                 final imagePath = await Navigator.of(context).push(
