@@ -7,6 +7,7 @@ import 'package:pic_load/firebase_service.dart';
 import 'geolocation_service.dart';  // Replace with your project name
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore for GeoPoint and Timestamp
+import 'firebase_image_upload.dart';
 
 Future<void> main() async {
   // Ensure that plugin services are initialized so that `availableCameras()`
@@ -18,6 +19,7 @@ Future<void> main() async {
   // Obtain a list of the available cameras on the device.
   final cameras = await availableCameras();
   final firstCamera = cameras.first;
+
 
   runApp(MyApp(camera: firstCamera));
 }
@@ -48,7 +50,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String? _imagePath;
-  FirebaseService _firebaseService = FirebaseService();
+  final FirebaseService _firebaseService = FirebaseService();
+  final ImageUploader imageUploader = ImageUploader();
 
   // Dummy data to be uploaded to Firestore
   int id = 1;
@@ -121,6 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
                 if (imagePath != null) {
                   _setImagePath(imagePath);
+                  //imageUploader.uploadImage(imagePath);
                 }
               },
               child: const Text('Take Picture'),
@@ -128,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () async {
-                await _firebaseService.addData(id, name, location, time);
+              bool success=  await _firebaseService.addData(_imagePath,, name, location, time);
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Data Uploaded')));
           
               },
