@@ -4,8 +4,8 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:pic_load/firebase_service.dart';
-import 'geolocation_service.dart';  // Replace with your project name
-import 'package:geolocator/geolocator.dart';
+//import 'geolocation_service.dart';  // Replace with your project name
+//import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore for GeoPoint and Timestamp
 import 'firebase_image_upload.dart';
 
@@ -54,8 +54,10 @@ class _HomeScreenState extends State<HomeScreen> {
   final ImageUploader imageUploader = ImageUploader();
 
   // Dummy data to be uploaded to Firestore
-  int id = 1;
-  String name = "Default Name";
+  String uid = 'abc@gmail.com';
+  String uname = "Default uName";
+  String cname = "cName";
+  int slab =0;
   GeoPoint location = GeoPoint(37.7749, -122.4194); // Example location (San Francisco)
   Timestamp time = Timestamp.now();
 
@@ -132,7 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () async {
-              bool success=  await _firebaseService.addData(_imagePath,, name, location, time);
+              bool success=  await _firebaseService.addData(_imagePath,slab,uid, uname,cname, location, time);
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Data Uploaded')));
           
               },

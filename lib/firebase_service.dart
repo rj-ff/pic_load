@@ -17,29 +17,35 @@ class FirebaseService {
   Future<void> _initializeFirebase() async {
     await Firebase.initializeApp();
   }
-   Map<String, dynamic> prepareData(int id, String name, GeoPoint location, Timestamp time) {
+   Map<String, dynamic> prepareData(int slab, String uid, String uname, String cname,GeoPoint location, Timestamp time, String imagepath) {
   return {
-    'id': id,
-    'name': name,
+    'uid': uid,
+    'uname': uname,
+    'cname': cname,
+    'slab' : slab,
     'location': location,
     'time': time,
+    'img' : imagepath,
   };
 }
 
   
-  Future<bool> addData(String? imagePath,int id, String name, GeoPoint location, Timestamp time) async {
+  Future<bool> addData(String? localimagePath, int slab, String uid, String uname, String cname,GeoPoint location, Timestamp time) async {
     try {
      // Strimg imagePath ='';
       CollectionReference collection = FirebaseFirestore.instance.collection(collectionName);
-      String path = await imageUploader.uploadImage(imagePath ?? ''); //if imagepath is null returns empty
-      if(path == '') return false;
+      String imagepath = await imageUploader.uploadImage(localimagePath ?? ''); //if imagepath is null returns empty
+      if(imagepath == '') return false;
 
       // Adding document to Firestore
       await collection.add({
-        'id': id,
-        'name': name,
-        'location': location,
-        'time': time,
+       'uid': uid,
+    'uname': uname,
+    'cname': cname,
+    'slab' : slab,
+    'location': location,
+    'time': time,
+    'img' : imagepath,
       });
 
       print('Data added to Firestore!');
