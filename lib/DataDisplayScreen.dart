@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class DataRowItem {
   final String img;
@@ -17,11 +18,12 @@ class DataRowItem {
 
 class DataDisplayScreen extends StatefulWidget {
   @override
-  DataDisplayScreenState createState() => DataDisplayScreenState();
+  _DataDisplayScreenState createState() => _DataDisplayScreenState();
 }
 
-class DataDisplayScreenState extends State<DataDisplayScreen> {
+class _DataDisplayScreenState extends State<DataDisplayScreen> {
   List<DataRowItem> dataItems = [];
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -43,37 +45,34 @@ class DataDisplayScreenState extends State<DataDisplayScreen> {
         );
       }).toList();
 
+      // Load all images before setting state to avoid individual loading indicators
+      await Future.wait(data.map((item) => precacheImage(NetworkImage(item.img), context)));
+
       setState(() {
         dataItems = data;
+        isLoading = false;
       });
     } catch (e) {
       print('Error fetching data from Firestore: $e');
     }
   }
 
-  // Fetch data from Firestore and map to DataRowItem
-  // Future<void> fetchDataFromFirestore() async {
-  //   try {
-  //     QuerySnapshot querySnapshot = await FirebaseFirestore.instance.collection('0').get();
-
-  //     // Process documents and map to dataItems list
-  //     List<DataRowItem> tempItems = querySnapshot.docs.map((doc) {
-  //       return DataRowItem(
-  //        uname: docData.containsKey('uname') ? docData['uname'] as String : 'Default Name',
-  //         cname: docData.containsKey('cname') ? docData['cname'] as String : 'Default Company',
-  //         img: docData.containsKey('img') ? docData['img'] as String : 'default_image_url',
-  //         uid: docData.containsKey('uid') ? docData['uid'] as String : 'Default UID',
-  //       );
-  //     }).toList();
-
-  //     // Update the state to display fetched data
-  //     setState(() {
-  //       dataItems = tempItems;
-  //     });
-  //   } catch (e) {
-  //     print('Error fetching data from Firestore: $e');
-  //   }
-  // }
+  void _showImagePreview(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: InteractiveViewer(
+          panEnabled: true, // Allows panning
+          minScale: 0.5, // Minimum zoom scale
+          maxScale: 4.0, // Maximum zoom scale
+          child: CachedNetworkImage(
+            imageUrl: imageUrl,
+            errorWidget: (context, url, error) => Icon(Icons.error), // Error icon if loading fails
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,25 +80,37 @@ class DataDisplayScreenState extends State<DataDisplayScreen> {
       appBar: AppBar(
         title: Text('Data Display Screen'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: dataItems.isEmpty
-            ? Center(child: CircularProgressIndicator()) // Loading indicator if data is being fetched
-            : ListView.separated(
+      body: isLoading
+          ? Center(
+              child: CircularProgressIndicator(), // Single loading indicator for all images
+            )
+          : Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: ListView.separated(
                 itemCount: dataItems.length,
                 itemBuilder: (context, index) {
                   final item = dataItems[index];
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Fetch image from Firebase using URL
-                      Image.network(
-                        item.img,
-                        height: 40,
-                        width: 40,
-                        fit: BoxFit.cover,
+                      // Image with tap to preview using CachedNetworkImage
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8.0),
+                      child: GestureDetector(
+                        onTap: () {
+                          _showImagePreview(context, item.img);
+                        },
+                        child: CachedNetworkImage(
+                          
+                          imageUrl: item.img,
+                          height: 40,
+                          width: 40,
+                          fit: BoxFit.cover,
+                          errorWidget: (context, url, error) => Icon(Icons.error), // Error icon
+                        ),
                       ),
-                      SizedBox(width: 8), // Space between icon and text
+                      ),
+                      SizedBox(width: 8), // Space between image and text
 
                       // Text fields on the right
                       Expanded(
@@ -125,13 +136,13 @@ class DataDisplayScreenState extends State<DataDisplayScreen> {
                   );
                 },
                 separatorBuilder: (context, index) => Divider(
-                  color: Colors.grey,
-                  thickness: 1,
-                  indent: 8,
-                  endIndent: 8,
+                  color: Colors.grey, // Divider color
+                  thickness: 1, // Divider thickness
+                  indent: 8, // Optional left padding for the divider
+                  endIndent: 8, // Optional right padding for the divider
                 ),
               ),
-      ),
+            ),
     );
   }
 }
