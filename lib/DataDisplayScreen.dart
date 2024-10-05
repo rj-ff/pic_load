@@ -17,6 +17,8 @@ class DataRowItem {
 }
 
 class DataDisplayScreen extends StatefulWidget {
+  const DataDisplayScreen({super.key});
+
   @override
   _DataDisplayScreenState createState() => _DataDisplayScreenState();
 }
