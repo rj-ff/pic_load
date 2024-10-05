@@ -4,6 +4,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:pic_load/firebase_service.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 //import 'geolocation_service.dart';  // Replace with your project name
 //import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore for GeoPoint and Timestamp
@@ -45,11 +46,19 @@ class HomeScreen extends StatefulWidget {
 
   final CameraDescription camera;
 
+
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+ bool isLoggedIn = false; // Track login state
+  String? userName;
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email'],
+  );
+
+  GoogleSignInAccount? _currentUser;
   String? _imagePath;
   final FirebaseService _firebaseService = FirebaseService();
   final ImageUploader imageUploader = ImageUploader();
@@ -62,6 +71,35 @@ class _HomeScreenState extends State<HomeScreen> {
   GeoPoint location = GeoPoint(37.7749, -122.4194); // Example location (San Francisco)
   Timestamp time = Timestamp.now();
 
+ @override
+  @override
+  void initState() {
+    super.initState();
+    _googleSignIn.onCurrentUserChanged.listen((GoogleSignInAccount? account) {
+      setState(() {
+        _currentUser = account;
+
+        isLoggedIn = _currentUser != null; // Set login status
+        userName = _currentUser?.displayName;
+      });
+    });
+    _googleSignIn.signInSilently(); // Try to sign in silently
+  }
+
+ Future<void> _handleSignIn() async {
+    try {
+      await _googleSignIn.signIn();
+    } catch (error) {
+      print(error);
+    }
+  }
+
+  Future<void> _handleSignOut() async {
+    await _googleSignIn.signOut();
+    setState(() {
+      isLoggedIn = false;
+    });
+  }
   void _setImagePath(String path) {
     setState(() {
       _imagePath = path;
@@ -81,7 +119,9 @@ class _HomeScreenState extends State<HomeScreen> {
         SnackBar(content: Text('No image to upload.')),
       );
     }
+   
   }
+  
   //  Future<void> _fetchLocation() async {
   //   Position? position = await _geolocationService.getGeolocation();
   //   if (position != null) {
@@ -98,66 +138,131 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Home')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            if (_imagePath != null) 
-              Column(
+      appBar: AppBar(
+        title: const Text('Home'),
+        actions: [
+          if (isLoggedIn) // Show Sign Out button only if the user is logged in
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Row(
                 children: [
-                  // Display the image path
-                  Text('Image Path: $_imagePath'),
-                  const SizedBox(height: 20),
-                  // Display the image with a 40% size
-                  Image.file(
-                    File(_imagePath!),
-                    width: MediaQuery.of(context).size.width * 0.4,
-                    height: MediaQuery.of(context).size.width * 0.4,
+                  Text(userName ?? 'User', style: TextStyle(color: Colors.white)),
+                  IconButton(
+                    icon: const Icon(Icons.logout),
+                    onPressed: _handleSignOut, // Call the sign-out function
                   ),
-                  const SizedBox(height: 20),
                 ],
               ),
-              ElevatedButton(
-              onPressed: () {
-                // Navigate to the Admin (Data Display) screen
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => DataDisplayScreen()),
-                );
-              },
-              child: Text('Admin'),
             ),
-            ElevatedButton(
-              onPressed: () async {
-                final imagePath = await Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => TakePictureScreen(camera: widget.camera, setImagePath: _setImagePath),
+        ],
+      ),
+      body: Stack(
+        children: [
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                if (_imagePath != null)
+                  Column(
+                    children: [
+                      // Display the image path
+                      Text('Image Path: $_imagePath'),
+                      const SizedBox(height: 20),
+                      // Display the image with a 40% size
+                      Image.file(
+                        File(_imagePath!),
+                        width: MediaQuery.of(context).size.width * 0.4,
+                        height: MediaQuery.of(context).size.width * 0.4,
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                   ),
-                );
-                if (imagePath != null) {
-                  _setImagePath(imagePath);
-                  //imageUploader.uploadImage(imagePath);
-                }
-              },
-              child: const Text('Take Picture'),
+                ElevatedButton(
+                  onPressed: () {
+                    // Navigate to the Admin (Data Display) screen
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => DataDisplayScreen()),
+                    );
+                  },
+                  child: Text('Admin'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final imagePath = await Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => TakePictureScreen(
+                          camera: widget.camera,
+                          setImagePath: _setImagePath,
+                        ),
+                      ),
+                    );
+                    if (imagePath != null) {
+                      _setImagePath(imagePath);
+                    }
+                  },
+                  child: const Text('Take Picture'),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () async {
+                    bool success = await _firebaseService.addData(
+                      _imagePath, slab, uid, uname, cname, location, time);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Data Uploaded')));
+                  },
+                  child: const Text('Upload to Cloud'),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () async {
-              bool success=  await _firebaseService.addData(_imagePath,slab,uid, uname,cname, location, time);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Data Uploaded')));
-          
-              },
-              child: const Text('Upload to Cloud'),
+          ),
+          if (!isLoggedIn) LoginOverlay(onLogin: _handleSignIn),
+        ],
+      ),
+    );
+  }
+}
+class LoginOverlay extends StatelessWidget {
+  final VoidCallback onLogin;
+
+const LoginOverlay({required this.onLogin});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black.withOpacity(0.5), // Semi-transparent background
+      child: Center(
+        child: Material(
+          elevation: 8.0,
+          borderRadius: BorderRadius.circular(10.0),
+          child: Container(
+            width: 300,
+            height: 200,
+            padding: EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10.0),
             ),
-          ],
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Login to Continue',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: onLogin,
+                  child: Text('Login with Google'),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 }
-
 class TakePictureScreen extends StatefulWidget {
   const TakePictureScreen({
     super.key,
